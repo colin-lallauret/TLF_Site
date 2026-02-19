@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
+import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import { Eye, EyeOff, Mail, Lock, AlertCircle } from 'lucide-react'
 
@@ -89,16 +90,15 @@ export default function ConnexionPage() {
             <div className="relative z-10 ml-auto mr-auto md:mr-20 lg:mr-32 flex items-center px-4 py-8">
                 <div className="w-full max-w-md bg-[#FDFBF0] rounded-3xl shadow-2xl p-10 animate-fade-in">
                     {/* Logo */}
-                    <div className="flex items-center gap-3 mb-8">
-                        <div className="w-12 h-12">
-                            <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M24 6C16 6 10 14 10 24C10 34 24 44 24 44C24 44 38 34 38 24C38 14 32 6 24 6Z" fill="#E36B39" />
-                                <path d="M20 22 L20 32 M28 22 L28 32 M16 26 L32 26" stroke="white" strokeWidth="2.5" strokeLinecap="round" />
-                            </svg>
-                        </div>
-                        <span className="text-2xl font-bold text-[#1A1A1A]">
-                            Manger avec <span className="italic">simpicité</span>
-                        </span>
+                    <div className="mb-8">
+                        <Image
+                            src="/tlf_full_orange.svg"
+                            alt="Travel Local Food"
+                            width={180}
+                            height={52}
+                            priority
+                            className="h-12 w-auto"
+                        />
                     </div>
 
                     <h1 className="text-2xl font-bold text-[#1A1A1A] mb-6">

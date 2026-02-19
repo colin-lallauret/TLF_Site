@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Image from 'next/image'
 
 export default function Footer() {
     return (
@@ -6,17 +7,14 @@ export default function Footer() {
             <div className="max-w-7xl mx-auto px-6 py-12">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
                     {/* Logo */}
-                    <div className="flex items-center gap-3">
-                        <div className="w-16 h-16">
-                            <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <circle cx="32" cy="32" r="30" fill="white" fillOpacity="0.15" />
-                                <path d="M32 10 C22 10 14 20 14 32 C14 46 32 56 32 56 C32 56 50 46 50 32 C50 20 42 10 32 10Z" fill="white" fillOpacity="0.9" />
-                                <path d="M26 30 L26 42 M38 30 L38 42 M22 34 L42 34" stroke="#00703C" strokeWidth="3" strokeLinecap="round" />
-                            </svg>
-                        </div>
-                        <div className="text-white font-bold text-xl leading-tight">
-                            Travel<br />Local Food
-                        </div>
+                    <div>
+                        <Image
+                            src="/tlf_full_black.svg"
+                            alt="Travel Local Food"
+                            width={160}
+                            height={48}
+                            className="h-10 w-auto brightness-0 invert"
+                        />
                     </div>
 
                     {/* Découvrir */}

@@ -1,41 +1,68 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+# ==============================================
+# Variables d'environnement (secrets)
+# ==============================================
+.env
+.env.local
+.env.*.local
+!.env.example
 
-# dependencies
-/node_modules
-/.pnp
-.pnp.*
-.yarn/*
-!.yarn/patches
-!.yarn/plugins
-!.yarn/releases
-!.yarn/versions
+# ==============================================
+# Next.js build output
+# ==============================================
+.next/
+out/
+build/
 
-# testing
-/coverage
-
-# next.js
-/.next/
-/out/
-
-# production
-/build
-
-# misc
-.DS_Store
-*.pem
-
-# debug
+# ==============================================
+# Node
+# ==============================================
+node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-.pnpm-debug.log*
+pnpm-debug.log*
+.pnpm-store/
 
-# env files (can opt-in for committing if needed)
-.env*
+# ==============================================
+# Documentation & maquettes internes
+# ==============================================
+AAA_GUIDELINES/
+maquettes/
 
-# vercel
-.vercel
-
-# typescript
+# ==============================================
+# TypeScript
+# ==============================================
 *.tsbuildinfo
 next-env.d.ts
+
+# ==============================================
+# OS
+# ==============================================
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ==============================================
+# Éditeurs
+# ==============================================
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# ==============================================
+# Certificats & secrets
+# ==============================================
+*.pem
+*.key
+*.cert
+
+# ==============================================
+# Logs & Debug
+# ==============================================
+*.log
+logs/
+.turbo/

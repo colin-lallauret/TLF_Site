@@ -3,12 +3,24 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, MapPin, Star, Euro } from 'lucide-react'
 import StarRating from '@/components/StarRating'
+import type { Restaurant } from '@/lib/supabase/types'
+
+type ReviewWithProfile = {
+    id: string
+    title: string | null
+    description: string | null
+    rating: number | null
+    created_at: string | null
+    profiles: { full_name: string | null; username: string | null; avatar_url: string | null } | null
+}
+
+type RestaurantWithReviews = Restaurant & { reviews: ReviewWithProfile[] }
 
 export default async function RestaurantDetailPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params
     const supabase = await createClient()
 
-    const { data: restaurant } = await supabase
+    const { data: rawRestaurant } = await supabase
         .from('restaurants')
         .select(`
       *,
@@ -20,9 +32,11 @@ export default async function RestaurantDetailPage({ params }: { params: Promise
         .eq('id', id)
         .single()
 
-    if (!restaurant) notFound()
+    if (!rawRestaurant) notFound()
 
-    const reviews = (restaurant as any).reviews ?? []
+    const restaurant = rawRestaurant as unknown as RestaurantWithReviews
+    const reviews = restaurant.reviews ?? []
+
     const avgRating = reviews.length > 0
         ? reviews.reduce((acc: number, r: any) => acc + (r.rating ?? 0), 0) / reviews.length
         : 0
@@ -37,11 +51,17 @@ export default async function RestaurantDetailPage({ params }: { params: Promise
 
             {/* Hero image */}
             <div className="rounded-3xl overflow-hidden h-64 mb-8">
-                <img
-                    src="https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=1200&q=80"
-                    alt={restaurant.name}
-                    className="w-full h-full object-cover"
-                />
+                {restaurant.image_url ? (
+                    <img
+                        src={restaurant.image_url}
+                        alt={restaurant.name}
+                        className="w-full h-full object-cover"
+                    />
+                ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-[#E8E3D0] text-[#9A9A8A] text-2xl font-bold">
+                        {restaurant.name.charAt(0)}
+                    </div>
+                )}
             </div>
 
             {/* Info */}

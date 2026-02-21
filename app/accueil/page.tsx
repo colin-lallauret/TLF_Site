@@ -8,22 +8,32 @@ export default async function AccueilPage() {
 
     if (!user) redirect('/connexion')
 
-    const [profileResult, myRestaurantsResult, communityRestaurantsResult, statsResult] = await Promise.all([
+    // Récupérer les IDs des restaurants que l'utilisateur a recommandés (a laissé un avis)
+    const { data: userReviews } = await supabase
+        .from('reviews')
+        .select('restaurant_id, rating')
+        .eq('contributor_id', user.id)
+
+    const myRestaurantIds = [...new Set(
+        ((userReviews ?? []) as { restaurant_id: string | null; rating: number | null }[])
+            .map(r => r.restaurant_id)
+            .filter((id): id is string => id !== null)
+    )]
+
+    const [profileResult, myRestaurantsResult, communityRestaurantsResult] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', user.id).single(),
-        supabase
-            .from('restaurants')
-            .select('*, reviews(*)')
-            .eq('reviews.contributor_id', user.id)
-            .limit(8),
+        myRestaurantIds.length > 0
+            ? supabase
+                .from('restaurants')
+                .select('*')
+                .in('id', myRestaurantIds)
+                .limit(8)
+            : Promise.resolve({ data: [] }),
         supabase
             .from('restaurants')
             .select('*, reviews(rating, contributor_id, profiles(full_name, avatar_url))')
             .order('created_at', { ascending: false })
             .limit(8),
-        supabase
-            .from('reviews')
-            .select('restaurant_id, rating')
-            .eq('contributor_id', user.id),
     ])
 
     return (
@@ -31,7 +41,7 @@ export default async function AccueilPage() {
             profile={profileResult.data}
             myRestaurants={myRestaurantsResult.data ?? []}
             communityRestaurants={communityRestaurantsResult.data ?? []}
-            reviewStats={statsResult.data ?? []}
+            reviewStats={userReviews ?? []}
         />
     )
 }

@@ -83,11 +83,17 @@ export default function RecommandationsClient({ restaurants, currentUserId }: Pr
                             <Link key={restaurant.id} href={`/restaurant/${restaurant.id}`} className="block">
                                 <div className="card animate-fade-in">
                                     <div className="h-48 bg-[#E8E3D0] overflow-hidden">
-                                        <img
-                                            src="https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=600&q=70"
-                                            alt={restaurant.name}
-                                            className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
-                                        />
+                                        {restaurant.image_url ? (
+                                            <img
+                                                src={restaurant.image_url}
+                                                alt={restaurant.name}
+                                                className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
+                                            />
+                                        ) : (
+                                            <div className="w-full h-full flex items-center justify-center bg-[#D4C9A8] text-[#9A9A8A] text-2xl font-bold">
+                                                {restaurant.name.charAt(0)}
+                                            </div>
+                                        )}
                                     </div>
                                     <div className="p-4">
                                         <h2 className="font-bold text-[#1A1A1A] leading-tight mb-1">{restaurant.name}</h2>
@@ -123,8 +129,8 @@ export default function RecommandationsClient({ restaurants, currentUserId }: Pr
                             key={i}
                             onClick={() => setPage(i + 1)}
                             className={`w-8 h-8 flex items-center justify-center rounded-lg text-sm font-medium transition-all ${page === i + 1
-                                    ? 'bg-[#E36B39] text-white'
-                                    : 'border border-[#E8E3D0] text-[#6B6B6B] hover:bg-[#E8F5EE]'
+                                ? 'bg-[#E36B39] text-white'
+                                : 'border border-[#E8E3D0] text-[#6B6B6B] hover:bg-[#E8F5EE]'
                                 }`}
                         >
                             {i + 1}

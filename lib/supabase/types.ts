@@ -63,6 +63,7 @@ export interface Database {
                     services: string[] | null
                     atmospheres: string[] | null
                     created_at: string | null
+                    image_url: string | null
                 }
                 Insert: {
                     id?: string
@@ -82,6 +83,7 @@ export interface Database {
                     services?: string[] | null
                     atmospheres?: string[] | null
                     created_at?: string | null
+                    image_url?: string | null
                 }
                 Update: {
                     id?: string
@@ -101,6 +103,7 @@ export interface Database {
                     services?: string[] | null
                     atmospheres?: string[] | null
                     created_at?: string | null
+                    image_url?: string | null
                 }
             }
             reviews: {

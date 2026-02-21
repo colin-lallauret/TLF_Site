@@ -19,11 +19,17 @@ function RestaurantCard({ restaurant }: { restaurant: Restaurant }) {
         <Link href={`/restaurant/${restaurant.id}`} className="block">
             <div className="card min-w-[220px] max-w-[220px] flex-shrink-0">
                 <div className="h-36 bg-[#E8E3D0] overflow-hidden">
-                    <img
-                        src={`https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400&q=70`}
-                        alt={restaurant.name}
-                        className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
-                    />
+                    {restaurant.image_url ? (
+                        <img
+                            src={restaurant.image_url}
+                            alt={restaurant.name}
+                            className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
+                        />
+                    ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-[#D4C9A8] text-[#9A9A8A] text-xs font-medium">
+                            {restaurant.name.charAt(0)}
+                        </div>
+                    )}
                 </div>
                 <div className="p-3">
                     <h3 className="font-bold text-sm text-[#1A1A1A] leading-tight line-clamp-2">{restaurant.name}</h3>
@@ -86,7 +92,7 @@ function RestaurantCarousel({ restaurants, title, cta }: { restaurants: Restaura
 
 export default function AccueilClient({ profile, myRestaurants, communityRestaurants, reviewStats }: Props) {
     const firstName = profile?.full_name?.split(' ')[0] ?? profile?.username ?? 'Explorateur'
-    const totalAddresses = reviewStats.length
+    const totalAddresses = new Set(reviewStats.map(r => r.restaurant_id).filter(Boolean)).size
     const avgRating = reviewStats.length > 0
         ? (reviewStats.reduce((acc, r) => acc + (r.rating ?? 0), 0) / reviewStats.length).toFixed(1)
         : '—'

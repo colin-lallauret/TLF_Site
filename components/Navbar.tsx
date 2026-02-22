@@ -59,7 +59,7 @@ export default function Navbar() {
                             ) : (
                                 <div className="w-full h-full bg-[#E8F5EE] flex items-center justify-center">
                                     <span className="text-[#00703C] font-bold text-sm">
-                                        {profile?.full_name?.charAt(0) ?? profile?.username?.charAt(0) ?? 'U'}
+                                        {profile?.full_name?.charAt(0) || profile?.username?.charAt(0) || 'U'}
                                     </span>
                                 </div>
                             )}

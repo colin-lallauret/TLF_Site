@@ -1,20 +1,20 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/lib/auth-context'
-import { LogOut, User, Lock, Bell, Shield, ChevronRight } from 'lucide-react'
+import { LogOut, User, Lock, Bell, Shield, ChevronRight, X } from 'lucide-react'
 
 export default function ParametresPage() {
     const { profile, signOut } = useAuth()
-    const router = useRouter()
     const supabase = createClient()
     const [saving, setSaving] = useState(false)
     const [fullName, setFullName] = useState(profile?.full_name ?? '')
     const [bio, setBio] = useState(profile?.bio ?? '')
     const [city, setCity] = useState(profile?.city ?? '')
     const [saved, setSaved] = useState(false)
+    const [showLogoutModal, setShowLogoutModal] = useState(false)
+    const [isLoggingOut, setIsLoggingOut] = useState(false)
 
     const handleSave = async () => {
         setSaving(true)
@@ -32,8 +32,16 @@ export default function ParametresPage() {
     }
 
     const handleSignOut = async () => {
-        await signOut()
-        router.push('/connexion')
+        setIsLoggingOut(true)
+        try {
+            await signOut()
+            // ✅ Rechargement complet pour que le proxy côté serveur
+            // voie bien les cookies de session effacés
+            window.location.href = '/connexion'
+        } catch (error) {
+            console.error("Erreur de déconnexion:", error)
+            setIsLoggingOut(false)
+        }
     }
 
     return (
@@ -98,12 +106,56 @@ export default function ParametresPage() {
 
             {/* Sign out */}
             <button
-                onClick={handleSignOut}
+                onClick={() => setShowLogoutModal(true)}
                 className="w-full flex items-center justify-center gap-2 py-3 px-6 rounded-2xl border-2 border-red-200 text-red-500 font-semibold hover:bg-red-50 transition-colors"
             >
                 <LogOut size={18} />
                 Se déconnecter
             </button>
+
+            {/* Modal de Déconnexion */}
+            {showLogoutModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
+                    <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl relative">
+                        <button
+                            onClick={() => setShowLogoutModal(false)}
+                            className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-900 bg-gray-50 hover:bg-gray-100 rounded-full transition-colors"
+                        >
+                            <X size={20} />
+                        </button>
+
+                        <div className="flex flex-col items-center text-center mt-2">
+                            <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mb-4">
+                                <LogOut size={28} className="text-red-500" />
+                            </div>
+                            <h3 className="text-xl font-bold text-[#1A1A1A] mb-2">Se déconnecter</h3>
+                            <p className="text-[#6B6B6B] mb-8 text-sm px-2">
+                                Êtes-vous sûr de vouloir vous déconnecter de votre compte TravelLocalFood ?
+                            </p>
+
+                            <div className="flex w-full gap-3">
+                                <button
+                                    onClick={() => setShowLogoutModal(false)}
+                                    className="flex-1 py-3 px-4 rounded-xl border border-[#E8E3D0] text-[#1A1A1A] font-semibold hover:bg-gray-50 transition-colors"
+                                >
+                                    Annuler
+                                </button>
+                                <button
+                                    onClick={handleSignOut}
+                                    disabled={isLoggingOut}
+                                    className="flex-1 py-3 px-4 rounded-xl bg-red-500 text-white font-semibold hover:bg-red-600 transition-colors disabled:opacity-50 flex justify-center items-center"
+                                >
+                                    {isLoggingOut ? (
+                                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                    ) : (
+                                        'Confirmer'
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }

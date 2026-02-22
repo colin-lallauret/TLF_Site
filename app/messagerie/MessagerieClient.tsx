@@ -49,39 +49,143 @@ function Avatar({ profile, size = 48 }: { profile: Profile | null, size?: number
     )
 }
 
-export default function MessagerieClient({ conversations, currentUserId }: Props) {
-    const supabase = createClient()
+export default function MessagerieClient({ conversations: initialConversations, currentUserId }: Props) {
+    // ✅ Client Supabase stable géré via state pour éviter les re-renders
+    const [supabase] = useState(() => createClient())
+
+    const [conversations, setConversations] = useState<ConversationWithProfiles[]>(initialConversations)
     const [selectedConvo, setSelectedConvo] = useState<ConversationWithProfiles | null>(
-        conversations[0] ?? null
+        initialConversations[0] ?? null
     )
     const [messages, setMessages] = useState<Message[]>([])
     const [newMessage, setNewMessage] = useState('')
     const [sending, setSending] = useState(false)
     const [search, setSearch] = useState('')
+    const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({})
     const messagesEndRef = useRef<HTMLDivElement>(null)
+    const seenMessageIds = useRef<Set<string>>(new Set())
 
     const getOtherProfile = (convo: ConversationWithProfiles) => {
         return convo.participant_1 === currentUserId ? convo.p2 : convo.p1
     }
 
-    // Load messages when conversation changes
+    // ─── Charger les compteurs de messages non-lus au démarrage ───
+    useEffect(() => {
+        const fetchUnreads = async () => {
+            const { data } = await supabase
+                .from('messages')
+                .select('id, conversation_id')
+                .eq('is_read', false)
+                .neq('sender_id', currentUserId)
+
+            if (data) {
+                const counts: Record<string, number> = {}
+                data.forEach(m => {
+                    const cid = m.conversation_id as string
+                    counts[cid] = (counts[cid] ?? 0) + 1
+                })
+                setUnreadCounts(counts)
+            }
+        }
+        fetchUnreads()
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [])
+
+    // ─── Souscription Realtime sur la liste des conversations ───
+    useEffect(() => {
+        const channel = supabase
+            .channel('conversations-list')
+            .on(
+                'postgres_changes',
+                {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'conversations',
+                    filter: `participant_1=eq.${currentUserId}`,
+                },
+                (payload) => {
+                    const updated = payload.new as ConversationWithProfiles
+                    setConversations(prev =>
+                        prev.map(c => c.id === updated.id ? { ...c, ...updated } : c)
+                            .sort((a, b) =>
+                                new Date(b.last_message_at ?? 0).getTime() - new Date(a.last_message_at ?? 0).getTime()
+                            )
+                    )
+                }
+            )
+            .on(
+                'postgres_changes',
+                {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'conversations',
+                    filter: `participant_2=eq.${currentUserId}`,
+                },
+                (payload) => {
+                    const updated = payload.new as ConversationWithProfiles
+                    setConversations(prev =>
+                        prev.map(c => c.id === updated.id ? { ...c, ...updated } : c)
+                            .sort((a, b) =>
+                                new Date(b.last_message_at ?? 0).getTime() - new Date(a.last_message_at ?? 0).getTime()
+                            )
+                    )
+                }
+            )
+            .subscribe()
+
+        return () => { supabase.removeChannel(channel) }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [currentUserId])
+
+    // ─── Charger les messages + souscription Realtime sur la conversation sélectionnée ───
     useEffect(() => {
         if (!selectedConvo) return
 
+        setMessages([])
+        seenMessageIds.current = new Set()
+
         const loadMessages = async () => {
-            const { data } = await supabase
+            console.log('[Messagerie] Chargement messages pour:', selectedConvo.id)
+
+            const { data, error } = await supabase
                 .from('messages')
                 .select('*')
                 .eq('conversation_id', selectedConvo.id)
                 .order('created_at', { ascending: true })
-            setMessages(data ?? [])
+
+            console.log('[Messagerie] Résultat:', { data, error, count: data?.length })
+
+            if (error) {
+                console.error('[Messagerie] ERREUR RLS ou réseau:', error)
+                return
+            }
+
+            if (data && data.length > 0) {
+                data.forEach(m => seenMessageIds.current.add(m.id))
+                setMessages(data)
+            }
+
+            // Marquer les messages comme lus (best effort, peut échouer si pas de politique UPDATE)
+            const { error: updateError } = await supabase
+                .from('messages')
+                .update({ is_read: true })
+                .eq('conversation_id', selectedConvo.id)
+                .eq('is_read', false)
+                .neq('sender_id', currentUserId)
+
+            if (updateError) {
+                console.warn('[Messagerie] Impossible de marquer comme lu:', updateError.message)
+            }
+
+            setUnreadCounts(prev => ({ ...prev, [selectedConvo.id]: 0 }))
         }
 
         loadMessages()
 
-        // Set up realtime subscription
+        // Channel Realtime pour les nouveaux messages
+        const channelName = `messages-${selectedConvo.id}-${Date.now()}`
         const channel = supabase
-            .channel(`messages:${selectedConvo.id}`)
+            .channel(channelName)
             .on(
                 'postgres_changes',
                 {
@@ -90,18 +194,29 @@ export default function MessagerieClient({ conversations, currentUserId }: Props
                     table: 'messages',
                     filter: `conversation_id=eq.${selectedConvo.id}`,
                 },
-                (payload) => {
-                    setMessages(prev => [...prev, payload.new as Message])
+                async (payload) => {
+                    const msg = payload.new as Message
+                    if (!seenMessageIds.current.has(msg.id)) {
+                        seenMessageIds.current.add(msg.id)
+                        setMessages(prev => [...prev, msg])
+
+                        // Marquer immédiatement comme lu si c'est un message reçu dans la convo ouverte
+                        if (msg.sender_id !== currentUserId) {
+                            await supabase
+                                .from('messages')
+                                .update({ is_read: true })
+                                .eq('id', msg.id)
+                        }
+                    }
                 }
             )
             .subscribe()
 
-        return () => {
-            supabase.removeChannel(channel)
-        }
+        return () => { supabase.removeChannel(channel) }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedConvo?.id])
 
-    // Auto-scroll to bottom
+    // ─── Auto-scroll ───
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
     }, [messages])
@@ -118,7 +233,6 @@ export default function MessagerieClient({ conversations, currentUserId }: Props
             text,
         })
 
-        // Update conversation last_message
         await supabase
             .from('conversations')
             .update({ last_message_text: text, last_message_at: new Date().toISOString() })
@@ -135,20 +249,20 @@ export default function MessagerieClient({ conversations, currentUserId }: Props
 
     const formatTime = (dateStr: string | null) => {
         if (!dateStr) return ''
-        return new Date(dateStr).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+        const date = new Date(dateStr)
+        const now = new Date()
+        const isToday = date.toDateString() === now.toDateString()
+        if (isToday) return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+        return date.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })
     }
 
     return (
         <div className="max-w-7xl mx-auto h-[calc(100vh-64px)] flex">
             {/* Sidebar */}
             <div className="w-80 border-r border-[#E8E3D0] flex flex-col">
-                {/* Header */}
                 <div className="p-6 border-b border-[#E8E3D0]">
                     <div className="flex items-center justify-between mb-4">
                         <h1 className="text-2xl font-bold text-[#1A1A1A]">Messagerie</h1>
-                        <button className="text-[#E36B39] hover:text-[#C8562B] transition-colors">
-                            <Search size={22} />
-                        </button>
                     </div>
                     <div className="relative">
                         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9A9A8A]" />
@@ -161,7 +275,6 @@ export default function MessagerieClient({ conversations, currentUserId }: Props
                     </div>
                 </div>
 
-                {/* Conversation list */}
                 <div className="flex-1 overflow-y-auto">
                     {filteredConvos.length === 0 ? (
                         <div className="p-6 text-center text-[#9A9A8A] text-sm">
@@ -171,6 +284,7 @@ export default function MessagerieClient({ conversations, currentUserId }: Props
                         filteredConvos.map(convo => {
                             const other = getOtherProfile(convo)
                             const isSelected = selectedConvo?.id === convo.id
+                            const unread = unreadCounts[convo.id] ?? 0
                             return (
                                 <button
                                     key={convo.id}
@@ -178,10 +292,18 @@ export default function MessagerieClient({ conversations, currentUserId }: Props
                                     className={`w-full flex items-center gap-3 px-4 py-4 border-b border-[#E8E3D0]/60 text-left transition-colors ${isSelected ? 'bg-[#E8F5EE]' : 'hover:bg-[#F5F0DC]'
                                         }`}
                                 >
-                                    <Avatar profile={other} size={48} />
+                                    <div className="relative">
+                                        <Avatar profile={other} size={48} />
+                                        {/* ✅ Badge non-lu dynamique */}
+                                        {unread > 0 && (
+                                            <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-[#00703C] flex items-center justify-center">
+                                                <span className="text-white text-xs font-bold">{unread > 9 ? '9+' : unread}</span>
+                                            </span>
+                                        )}
+                                    </div>
                                     <div className="flex-1 min-w-0">
                                         <div className="flex items-center justify-between">
-                                            <p className="font-semibold text-sm text-[#1A1A1A] truncate">
+                                            <p className={`text-sm truncate ${unread > 0 ? 'font-bold text-[#1A1A1A]' : 'font-semibold text-[#1A1A1A]'}`}>
                                                 {other?.full_name ? (
                                                     <>
                                                         {other.full_name.split(' ')[0]}{' '}
@@ -193,12 +315,9 @@ export default function MessagerieClient({ conversations, currentUserId }: Props
                                                 {formatTime(convo.last_message_at)}
                                             </span>
                                         </div>
-                                        <p className="text-xs text-[#9A9A8A] truncate mt-0.5">
+                                        <p className={`text-xs truncate mt-0.5 ${unread > 0 ? 'text-[#1A1A1A] font-medium' : 'text-[#9A9A8A]'}`}>
                                             {convo.last_message_text ?? 'a envoyé un message'}
                                         </p>
-                                    </div>
-                                    <div className="w-5 h-5 rounded-full bg-[#00703C] flex items-center justify-center flex-shrink-0">
-                                        <span className="text-white text-xs font-bold">1</span>
                                     </div>
                                 </button>
                             )
@@ -223,11 +342,17 @@ export default function MessagerieClient({ conversations, currentUserId }: Props
                                         return <>{parts[0]} <span className="uppercase">{parts.slice(1).join(' ')}</span></>
                                     })()}
                                 </p>
+                                <p className="text-xs text-[#00703C]">En ligne</p>
                             </div>
                         </div>
 
                         {/* Messages */}
                         <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                            {messages.length === 0 && (
+                                <div className="flex items-center justify-center h-full text-[#9A9A8A] text-sm">
+                                    Commencez la discussion ! 👋
+                                </div>
+                            )}
                             {messages.map(msg => {
                                 const isMine = msg.sender_id === currentUserId
                                 return (
@@ -238,6 +363,7 @@ export default function MessagerieClient({ conversations, currentUserId }: Props
                                             <p className="text-sm text-[#1A1A1A] leading-relaxed">{msg.text}</p>
                                             <p className="text-xs text-[#9A9A8A] mt-1 text-right">
                                                 {formatTime(msg.created_at)}
+                                                {isMine && <span className="ml-1">{msg.is_read ? '✓✓' : '✓'}</span>}
                                             </p>
                                         </div>
                                     </div>
@@ -255,7 +381,14 @@ export default function MessagerieClient({ conversations, currentUserId }: Props
                                 <input
                                     value={newMessage}
                                     onChange={e => setNewMessage(e.target.value)}
-                                    onKeyDown={e => e.key === 'Enter' && !e.shiftKey && sendMessage()}
+                                    onKeyDown={e => {
+                                        if (e.key === 'Enter' && !e.shiftKey) {
+                                            e.preventDefault();
+                                            if (newMessage.trim() && !sending) {
+                                                sendMessage();
+                                            }
+                                        }
+                                    }}
                                     placeholder="Écrivez votre message ici..."
                                     className="flex-1 bg-transparent text-sm text-[#1A1A1A] placeholder-[#9A9A8A] focus:outline-none"
                                 />

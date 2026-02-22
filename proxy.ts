@@ -1,7 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
     let supabaseResponse = NextResponse.next({
         request,
     })
@@ -16,9 +16,7 @@ export async function middleware(request: NextRequest) {
                 },
                 setAll(cookiesToSet) {
                     cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
-                    supabaseResponse = NextResponse.next({
-                        request,
-                    })
+                    supabaseResponse = NextResponse.next({ request })
                     cookiesToSet.forEach(({ name, value, options }) =>
                         supabaseResponse.cookies.set(name, value, options)
                     )
@@ -27,12 +25,12 @@ export async function middleware(request: NextRequest) {
         }
     )
 
-    // Refresh session
+    // IMPORTANT : Ne pas exécuter de logique entre createServerClient et getUser.
     const {
         data: { user },
     } = await supabase.auth.getUser()
 
-    // Protected routes
+    // Routes protégées
     const protectedPaths = ['/accueil', '/profil', '/messagerie', '/recommandations', '/ajouter-adresse', '/trips']
     const isProtected = protectedPaths.some(path => request.nextUrl.pathname.startsWith(path))
 
@@ -42,7 +40,7 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(url)
     }
 
-    // If already logged in and hitting /connexion, redirect to /accueil
+    // Si déjà connecté et qu'on tente d'aller sur /connexion → redirect /accueil
     if (user && request.nextUrl.pathname === '/connexion') {
         const url = request.nextUrl.clone()
         url.pathname = '/accueil'

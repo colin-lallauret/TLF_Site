@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { User } from '@supabase/supabase-js'
 import type { Profile } from '@/lib/supabase/types'
@@ -23,34 +23,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [user, setUser] = useState<User | null>(null)
     const [profile, setProfile] = useState<Profile | null>(null)
     const [loading, setLoading] = useState(true)
-    const supabase = createClient()
+    // ✅ Client Supabase stable — géré via state
+    const [supabase] = useState(() => createClient())
 
     useEffect(() => {
-        const getSession = async () => {
+        const fetchProfile = async (userId: string) => {
+            const { data } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', userId)
+                .single()
+            setProfile(data)
+        }
+
+        // Charge la session initiale une seule fois
+        const init = async () => {
             const { data: { user } } = await supabase.auth.getUser()
-            setUser(user)
-            if (user) {
-                const { data } = await supabase
-                    .from('profiles')
-                    .select('*')
-                    .eq('id', user.id)
-                    .single()
-                setProfile(data)
-            }
+            setUser(user ?? null)
+            if (user) await fetchProfile(user.id)
             setLoading(false)
         }
 
-        getSession()
+        init()
 
+        // ✅ INITIAL_SESSION ignoré pour éviter le double-appel avec init()
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+            if (event === 'INITIAL_SESSION') return
             setUser(session?.user ?? null)
             if (session?.user) {
-                const { data } = await supabase
-                    .from('profiles')
-                    .select('*')
-                    .eq('id', session.user.id)
-                    .single()
-                setProfile(data)
+                await fetchProfile(session.user.id)
             } else {
                 setProfile(null)
             }
@@ -58,12 +59,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         })
 
         return () => subscription.unsubscribe()
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
     const signOut = async () => {
-        await supabase.auth.signOut()
-        setUser(null)
-        setProfile(null)
+        try {
+            // Se déconnecter de tous les channels pour éviter un blocage (hang)
+            await supabase.removeAllChannels()
+
+            // Timeout de 2s au cas où signOut bloque côté réseau/realtime
+            const result = await Promise.race([
+                supabase.auth.signOut(),
+                new Promise<{ error: Error }>((resolve) =>
+                    setTimeout(() => resolve({ error: new Error('timeout') }), 2000)
+                )
+            ])
+
+            // Si timeout ou erreur, on force la déconnexion locale pour bien vider les cookies
+            if (result && result.error) {
+                console.warn("SignOut api bloqué ou erreur, on force en local :", result.error)
+                await supabase.auth.signOut({ scope: 'local' })
+            }
+        } catch (error) {
+            console.error('Erreur inattendue lors de la déconnexion Supabase:', error)
+            await supabase.auth.signOut({ scope: 'local' })
+        } finally {
+            setUser(null)
+            setProfile(null)
+        }
     }
 
     return (

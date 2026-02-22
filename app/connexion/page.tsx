@@ -127,8 +127,10 @@ export default function ConnexionPage() {
                                     id="magic-email"
                                     {...register('email')}
                                     type="email"
+                                    autoComplete="email"
                                     placeholder="votre@email.com"
-                                    className="input-field pl-11"
+                                    className="input-field"
+                                    style={{ paddingLeft: '2.75rem' }}
                                 />
                             </div>
                             {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email.message}</p>}
@@ -151,10 +153,13 @@ export default function ConnexionPage() {
                             <div className="relative">
                                 <Lock size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#9A9A8A]" />
                                 <input
+                                    id="password"
                                     {...register('password')}
                                     type={showPassword ? 'text' : 'password'}
+                                    autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
                                     placeholder="••••••••"
-                                    className="input-field pl-11 pr-11"
+                                    className="input-field"
+                                    style={{ paddingLeft: '2.75rem', paddingRight: '2.75rem' }}
                                 />
                                 <button
                                     type="button"

@@ -2,15 +2,30 @@
 
 import Link from 'next/link'
 import { useState } from 'react'
+import dynamic from 'next/dynamic'
 import { ChevronLeft, ChevronRight, MapPin, Plus, TrendingUp } from 'lucide-react'
 import StarRating from '@/components/StarRating'
 import type { Profile, Restaurant } from '@/lib/supabase/types'
+
+// Chargement dynamique pour éviter les erreurs SSR de Leaflet
+const RestaurantMap = dynamic(() => import('@/components/RestaurantMap'), { ssr: false })
+
+interface MapRestaurant {
+    id: string
+    name: string
+    address: string | null
+    city: string | null
+    lat: number | null
+    lng: number | null
+    image_url: string | null
+}
 
 interface Props {
     profile: Profile | null
     myRestaurants: Restaurant[]
     communityRestaurants: Restaurant[]
     reviewStats: { restaurant_id: string | null; rating: number | null }[]
+    mapRestaurants: MapRestaurant[]
 }
 
 function RestaurantCard({ restaurant }: { restaurant: Restaurant }) {
@@ -90,7 +105,7 @@ function RestaurantCarousel({ restaurants, title, cta }: { restaurants: Restaura
     )
 }
 
-export default function AccueilClient({ profile, myRestaurants, communityRestaurants, reviewStats }: Props) {
+export default function AccueilClient({ profile, myRestaurants, communityRestaurants, reviewStats, mapRestaurants }: Props) {
     const firstName = profile?.full_name?.split(' ')[0] ?? profile?.username ?? 'Explorateur'
     const totalAddresses = new Set(reviewStats.map(r => r.restaurant_id).filter(Boolean)).size
     const avgRating = reviewStats.length > 0
@@ -176,30 +191,26 @@ export default function AccueilClient({ profile, myRestaurants, communityRestaur
                     cta={{ label: 'Voir les autres adresses', href: '/recommandations?tab=communaute' }}
                 />
 
-                {/* Interactive Map placeholder */}
+                {/* Interactive Map */}
                 <div>
                     <h2 className="section-title mb-4">Votre carte interactive</h2>
                     <div className="rounded-3xl overflow-hidden border border-[#E8E3D0] h-72 bg-[#E8E3D0] relative">
-                        <img
-                            src="https://api.mapbox.com/styles/v1/mapbox/light-v11/static/5.9333,43.1167,9/900x320@2x?access_token=pk.placeholder"
-                            alt="Carte"
-                            className="w-full h-full object-cover"
-                            onError={e => {
-                                (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1618044733300-9472054094ee?w=900&q=70'
-                            }}
-                        />
-                        <div className="absolute inset-0 flex items-center justify-center bg-[#E8E3D0]/40">
-                            <div className="text-center">
-                                <MapPin size={40} className="mx-auto text-[#00703C] mb-2" />
-                                <p className="text-[#6B6B6B] font-medium">Carte interactive</p>
-                                <p className="text-sm text-[#9A9A8A]">Visualisez vos adresses sur la carte</p>
+                        {mapRestaurants.length > 0 ? (
+                            <RestaurantMap restaurants={mapRestaurants} />
+                        ) : (
+                            <div className="absolute inset-0 flex items-center justify-center">
+                                <div className="text-center">
+                                    <MapPin size={40} className="mx-auto text-[#00703C] mb-2" />
+                                    <p className="text-[#6B6B6B] font-medium">Carte interactive</p>
+                                    <p className="text-sm text-[#9A9A8A]">Ajoutez des adresses pour les voir ici</p>
+                                </div>
                             </div>
-                        </div>
+                        )}
                         <Link
-                            href="/carte"
-                            className="absolute top-4 right-4 btn-primary text-sm py-2 px-4"
+                            href="/recommandations"
+                            className="absolute top-4 right-4 btn-primary text-sm py-2 px-4 z-[1000]"
                         >
-                            Voir ma carte
+                            Voir mes adresses
                         </Link>
                     </div>
                 </div>

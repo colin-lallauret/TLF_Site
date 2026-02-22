@@ -20,7 +20,7 @@ export default async function AccueilPage() {
             .filter((id): id is string => id !== null)
     )]
 
-    const [profileResult, myRestaurantsResult, communityRestaurantsResult] = await Promise.all([
+    const [profileResult, myRestaurantsResult, communityRestaurantsResult, mapRestaurantsResult] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', user.id).single(),
         myRestaurantIds.length > 0
             ? supabase
@@ -34,6 +34,14 @@ export default async function AccueilPage() {
             .select('*, reviews(rating, contributor_id, profiles(full_name, avatar_url))')
             .order('created_at', { ascending: false })
             .limit(8),
+        // Tous les restaurants de l'utilisateur avec coords pour la carte
+        myRestaurantIds.length > 0
+            ? supabase
+                .from('restaurants')
+                .select('id, name, address, city, lat, lng, image_url')
+                .in('id', myRestaurantIds)
+                .not('lat', 'is', null)
+            : Promise.resolve({ data: [] }),
     ])
 
     return (
@@ -42,6 +50,7 @@ export default async function AccueilPage() {
             myRestaurants={myRestaurantsResult.data ?? []}
             communityRestaurants={communityRestaurantsResult.data ?? []}
             reviewStats={userReviews ?? []}
+            mapRestaurants={mapRestaurantsResult.data ?? []}
         />
     )
 }

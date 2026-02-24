@@ -64,8 +64,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const signOut = async () => {
         try {
+            console.log("Début de déconnexion...")
             // Se déconnecter de tous les channels pour éviter un blocage (hang)
-            await supabase.removeAllChannels()
+            await Promise.race([
+                supabase.removeAllChannels(),
+                new Promise(resolve => setTimeout(resolve, 1000))
+            ])
+            console.log("Channels retirés.")
 
             // Timeout de 2s au cas où signOut bloque côté réseau/realtime
             const result = await Promise.race([
@@ -80,12 +85,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 console.warn("SignOut api bloqué ou erreur, on force en local :", result.error)
                 await supabase.auth.signOut({ scope: 'local' })
             }
+            console.log("Déconnexion Supabase terminée.")
         } catch (error) {
             console.error('Erreur inattendue lors de la déconnexion Supabase:', error)
             await supabase.auth.signOut({ scope: 'local' })
         } finally {
             setUser(null)
             setProfile(null)
+            console.log("Déconnexion complète (state clean).")
         }
     }
 

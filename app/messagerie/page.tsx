@@ -17,5 +17,24 @@ export default async function MessageriePage() {
         .or(`participant_1.eq.${user.id},participant_2.eq.${user.id}`)
         .order('last_message_at', { ascending: false })
 
-    return <MessagerieClient conversations={conversations ?? []} currentUserId={user.id} />
+    let initialMessages: any[] = []
+    if (conversations && conversations.length > 0) {
+        const { data: msgs } = await supabase
+            .from('messages')
+            .select('*')
+            .eq('conversation_id', conversations[0].id)
+            .order('created_at', { ascending: true })
+
+        if (msgs) {
+            initialMessages = msgs
+        }
+    }
+
+    return (
+        <MessagerieClient
+            conversations={conversations ?? []}
+            initialMessages={initialMessages}
+            currentUserId={user.id}
+        />
+    )
 }

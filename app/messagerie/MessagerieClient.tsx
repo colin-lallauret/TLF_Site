@@ -24,6 +24,7 @@ interface ConversationWithProfiles {
 
 interface Props {
     conversations: ConversationWithProfiles[]
+    initialMessages: Message[]
     currentUserId: string
 }
 
@@ -49,7 +50,7 @@ function Avatar({ profile, size = 48 }: { profile: Profile | null, size?: number
     )
 }
 
-export default function MessagerieClient({ conversations: initialConversations, currentUserId }: Props) {
+export default function MessagerieClient({ conversations: initialConversations, initialMessages, currentUserId }: Props) {
     // ✅ Client Supabase stable géré via state pour éviter les re-renders
     const [supabase] = useState(() => createClient())
 
@@ -57,7 +58,7 @@ export default function MessagerieClient({ conversations: initialConversations, 
     const [selectedConvo, setSelectedConvo] = useState<ConversationWithProfiles | null>(
         initialConversations[0] ?? null
     )
-    const [messages, setMessages] = useState<Message[]>([])
+    const [messages, setMessages] = useState<Message[]>(initialMessages)
     const [newMessage, setNewMessage] = useState('')
     const [sending, setSending] = useState(false)
     const [search, setSearch] = useState('')
@@ -141,8 +142,16 @@ export default function MessagerieClient({ conversations: initialConversations, 
     useEffect(() => {
         if (!selectedConvo) return
 
-        setMessages([])
-        seenMessageIds.current = new Set()
+        setMessages(prev => {
+            if (prev.length > 0 && prev[0].conversation_id !== selectedConvo.id) {
+                seenMessageIds.current = new Set()
+                return []
+            }
+            if (prev.length > 0) {
+                prev.forEach(m => seenMessageIds.current.add(m.id))
+            }
+            return prev
+        })
 
         const loadMessages = async () => {
             console.log('[Messagerie] Chargement messages pour:', selectedConvo.id)

@@ -3,10 +3,12 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, MapPin, Star, Euro } from 'lucide-react'
 import StarRating from '@/components/StarRating'
+import DeleteReviewButton from './DeleteReviewButton'
 import type { Restaurant } from '@/lib/supabase/types'
 
 type ReviewWithProfile = {
     id: string
+    contributor_id: string | null
     title: string | null
     description: string | null
     rating: number | null
@@ -20,12 +22,16 @@ export default async function RestaurantDetailPage({ params }: { params: Promise
     const { id } = await params
     const supabase = await createClient()
 
+    // Récupérer l'utilisateur connecté
+    const { data: { user } } = await supabase.auth.getUser()
+    const currentUserId = user?.id ?? null
+
     const { data: rawRestaurant } = await supabase
         .from('restaurants')
         .select(`
       *,
       reviews(
-        id, title, description, rating, created_at,
+        id, contributor_id, title, description, rating, created_at,
         profiles(full_name, username, avatar_url)
       )
     `)
@@ -154,6 +160,13 @@ export default async function RestaurantDetailPage({ params }: { params: Promise
                                             </span>
                                         </div>
                                     </div>
+                                    {/* Bouton supprimer — visible uniquement pour l'auteur */}
+                                    {currentUserId && review.contributor_id === currentUserId && (
+                                        <DeleteReviewButton
+                                            reviewId={review.id}
+                                            restaurantId={id}
+                                        />
+                                    )}
                                 </div>
                                 {review.title && <p className="font-semibold text-[#1A1A1A] mb-1">{review.title}</p>}
                                 {review.description && <p className="text-sm text-[#6B6B6B] leading-relaxed">{review.description}</p>}

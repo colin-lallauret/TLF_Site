@@ -199,6 +199,7 @@ export type Database = {
                     city: string | null
                     country: string | null
                     created_at: string | null
+                    created_by: string | null
                     department: string | null
                     dietary_prefs: string[] | null
                     food_types: string[] | null
@@ -219,6 +220,7 @@ export type Database = {
                     city?: string | null
                     country?: string | null
                     created_at?: string | null
+                    created_by?: string | null
                     department?: string | null
                     dietary_prefs?: string[] | null
                     food_types?: string[] | null
@@ -239,6 +241,7 @@ export type Database = {
                     city?: string | null
                     country?: string | null
                     created_at?: string | null
+                    created_by?: string | null
                     department?: string | null
                     dietary_prefs?: string[] | null
                     food_types?: string[] | null

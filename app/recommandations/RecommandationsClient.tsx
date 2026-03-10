@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { Plus, MapPin, ChevronLeft, ChevronRight } from 'lucide-react'
 import StarRating from '@/components/StarRating'
+import DeleteRestaurantButton from './DeleteRestaurantButton'
 import type { Restaurant } from '@/lib/supabase/types'
 
 interface RestaurantWithReviews extends Restaurant {
@@ -79,36 +80,47 @@ export default function RecommandationsClient({ restaurants, currentUserId }: Pr
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                     {paginated.map(restaurant => {
                         const avg = getAvgRating(restaurant)
+                        const isOwner = restaurant.created_by === currentUserId
+
                         return (
-                            <Link key={restaurant.id} href={`/restaurant/${restaurant.id}`} className="block">
-                                <div className="card animate-fade-in">
-                                    <div className="h-48 bg-[#E8E3D0] overflow-hidden">
-                                        {restaurant.image_url ? (
-                                            <img
-                                                src={restaurant.image_url}
-                                                alt={restaurant.name}
-                                                className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
-                                            />
-                                        ) : (
-                                            <div className="w-full h-full flex items-center justify-center bg-[#D4C9A8] text-[#9A9A8A] text-2xl font-bold">
-                                                {restaurant.name.charAt(0)}
+                            <div key={restaurant.id} className="relative group">
+                                {/* Bouton supprimer — visible au hover, uniquement pour le créateur */}
+                                {tab === 'mes' && isOwner && (
+                                    <DeleteRestaurantButton
+                                        restaurantId={restaurant.id}
+                                        restaurantName={restaurant.name}
+                                    />
+                                )}
+                                <Link href={`/restaurant/${restaurant.id}`} className="block">
+                                    <div className="card animate-fade-in">
+                                        <div className="h-48 bg-[#E8E3D0] overflow-hidden">
+                                            {restaurant.image_url ? (
+                                                <img
+                                                    src={restaurant.image_url}
+                                                    alt={restaurant.name}
+                                                    className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
+                                                />
+                                            ) : (
+                                                <div className="w-full h-full flex items-center justify-center bg-[#D4C9A8] text-[#9A9A8A] text-2xl font-bold">
+                                                    {restaurant.name.charAt(0)}
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="p-4">
+                                            <h2 className="font-bold text-[#1A1A1A] leading-tight mb-1">{restaurant.name}</h2>
+                                            <p className="text-xs text-[#9A9A8A] flex items-center gap-1 mb-3">
+                                                <MapPin size={12} />
+                                                {[restaurant.address, restaurant.city].filter(Boolean).join(', ')}
+                                            </p>
+                                            <div className="flex items-center gap-2">
+                                                <span className="font-bold text-[#1A1A1A]">{avg.toFixed(1)}</span>
+                                                <StarRating rating={avg} size={14} />
+                                                <span className="text-xs text-[#9A9A8A]">({restaurant.reviews.length})</span>
                                             </div>
-                                        )}
-                                    </div>
-                                    <div className="p-4">
-                                        <h2 className="font-bold text-[#1A1A1A] leading-tight mb-1">{restaurant.name}</h2>
-                                        <p className="text-xs text-[#9A9A8A] flex items-center gap-1 mb-3">
-                                            <MapPin size={12} />
-                                            {[restaurant.address, restaurant.city].filter(Boolean).join(', ')}
-                                        </p>
-                                        <div className="flex items-center gap-2">
-                                            <span className="font-bold text-[#1A1A1A]">{avg.toFixed(1)}</span>
-                                            <StarRating rating={avg} size={14} />
-                                            <span className="text-xs text-[#9A9A8A]">({restaurant.reviews.length})</span>
                                         </div>
                                     </div>
-                                </div>
-                            </Link>
+                                </Link>
+                            </div>
                         )
                     })}
                 </div>

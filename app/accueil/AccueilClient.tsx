@@ -122,17 +122,19 @@ export default function AccueilClient({ profile, myRestaurants, communityRestaur
                     className="w-full h-full object-cover"
                 />
                 <div className="absolute inset-0 bg-gradient-to-r from-black/60 to-transparent" />
-                <div className="absolute inset-0 flex flex-col justify-center px-8 md:px-16">
-                    <h1 className="text-4xl md:text-5xl font-bold text-white mb-2">
-                        Bonjour {firstName},
-                    </h1>
-                    <p className="text-white/80 text-lg mb-6">
-                        Quel restaurant avez-vous découvert aujourd&apos;hui ?
-                    </p>
-                    <Link href="/ajouter-adresse" className="w-fit btn-primary">
-                        <Plus size={18} />
-                        Ajouter une adresse
-                    </Link>
+                <div className="absolute inset-0 flex flex-col justify-center">
+                    <div className="max-w-7xl mx-auto w-full px-6">
+                        <h1 className="text-4xl md:text-5xl font-bold text-white mb-2">
+                            Bonjour {firstName},
+                        </h1>
+                        <p className="text-white/80 text-lg mb-6">
+                            Quel restaurant avez-vous découvert aujourd&apos;hui ?
+                        </p>
+                        <Link href="/ajouter-adresse" className="w-fit btn-primary">
+                            <Plus size={18} />
+                            Ajouter une adresse
+                        </Link>
+                    </div>
                 </div>
             </div>
 

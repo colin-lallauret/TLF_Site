@@ -21,7 +21,7 @@ export default function TripDetailPage() {
 
     const [trip, setTrip] = useState<Trip | null>(null)
     const [steps, setSteps] = useState<StepWithRestaurant[]>([])
-    const [restaurants, setRestaurants] = useState<Restaurant[]>([])
+    const [restaurants, setRestaurants] = useState<{ id: string; name: string; city: string | null; address: string | null }[]>([])
     const [loading, setLoading] = useState(true)
     const [showAddStep, setShowAddStep] = useState(false)
     const [selectedRestaurant, setSelectedRestaurant] = useState('')
